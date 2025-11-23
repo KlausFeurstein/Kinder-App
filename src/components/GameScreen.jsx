@@ -126,6 +126,9 @@ const GameScreen = ({ mode, category, initialTime, onBack }) => {
     if (item.visualId) {
       return getVisual(item.visualId);
     }
+    if (item.image && (item.image.includes('/') || item.image.includes('.'))) {
+      return <img src={item.image} alt={item.english} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
+    }
     return item.image;
   };
 

@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { vocabulary, categories } from '../data/vocabulary';
 import { getVisual } from './Visuals';
+import { useSpeech } from '../hooks/useSpeech';
 
 const GalleryScreen = () => {
   const timeoutRef = useRef(null);
@@ -14,12 +15,7 @@ const GalleryScreen = () => {
     };
   }, []);
 
-  const speak = (text, lang = 'en-US') => {
-    // Removed window.speechSynthesis.cancel() from here to allow sequential playback
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = lang;
-    window.speechSynthesis.speak(utterance);
-  };
+  const { speak } = useSpeech();
 
   const handleItemClick = (item) => {
     // Cancel any existing speech and timeouts when a NEW item is clicked
@@ -28,13 +24,16 @@ const GalleryScreen = () => {
       clearTimeout(timeoutRef.current);
     }
     
-    speak(item.english);
+    speak(item.english, 'en-US');
     timeoutRef.current = setTimeout(() => speak(item.german, 'de-DE'), 1000);
   };
 
   const renderImage = (item) => {
     if (item.visualId) {
       return getVisual(item.visualId);
+    }
+    if (item.image && (item.image.includes('/') || item.image.includes('.'))) {
+      return <img src={item.image} alt={item.english} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />;
     }
     return item.image;
   };

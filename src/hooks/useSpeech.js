@@ -6,10 +6,21 @@ export const useSpeech = () => {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = lang;
     
-    // Try to select a better voice (consistent with GameScreen logic)
+    // Try to select a better voice
     const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(v => v.name.includes('Google US English') || v.name.includes('Female')) || voices.find(v => v.lang === lang);
-    
+    let preferredVoice = null;
+
+    if (lang.startsWith('en')) {
+      preferredVoice = voices.find(v => v.name.includes('Google US English') || (v.name.includes('Female') && v.lang.startsWith('en')));
+    } else if (lang.startsWith('de')) {
+      preferredVoice = voices.find(v => v.name.includes('Google Deutsch') || (v.name.includes('Female') && v.lang.startsWith('de')));
+    }
+
+    // Fallback to any voice of the requested language
+    if (!preferredVoice) {
+      preferredVoice = voices.find(v => v.lang.startsWith(lang.split('-')[0]));
+    }
+
     if (preferredVoice) {
       utterance.voice = preferredVoice;
     }

@@ -1,3 +1,8 @@
+import springImg from '../assets/images/seasons/spring.png';
+import summerImg from '../assets/images/seasons/summer.png';
+import autumnImg from '../assets/images/seasons/autumn.png';
+import winterImg from '../assets/images/seasons/winter.png';
+
 export const vocabulary = [
   // Animals
   {
@@ -1000,32 +1005,32 @@ export const vocabulary = [
     id: "spring",
     german: "Frühling",
     english: "Spring",
-    image: "🌸",
-    visualId: "season_spring",
+    image: springImg,
+    visualId: null,
     category: "seasons",
   },
   {
     id: "summer",
     german: "Sommer",
     english: "Summer",
-    image: "☀️",
-    visualId: "season_summer",
+    image: summerImg,
+    visualId: null,
     category: "seasons",
   },
   {
     id: "autumn",
     german: "Herbst",
     english: "Autumn",
-    image: "🍂",
-    visualId: "season_autumn",
+    image: autumnImg,
+    visualId: null,
     category: "seasons",
   },
   {
     id: "winter",
     german: "Winter",
     english: "Winter",
-    image: "❄️",
-    visualId: "season_winter",
+    image: winterImg,
+    visualId: null,
     category: "seasons",
   },
 
