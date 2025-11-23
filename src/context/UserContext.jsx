@@ -18,13 +18,19 @@ export const UserProvider = ({ children }) => {
     // Load last user
     const savedUser = localStorage.getItem('kinder-learn-user');
     if (savedUser) {
-      setCurrentUser(savedUser);
+      try {
+        setCurrentUser(JSON.parse(savedUser));
+      } catch (e) {
+        // Handle legacy string format
+        setCurrentUser({ type: 'text', value: savedUser });
+      }
     }
   }, []);
 
-  const login = (name) => {
-    setCurrentUser(name);
-    localStorage.setItem('kinder-learn-user', name);
+  const login = (profile) => {
+    // profile = { type: 'text' | 'image', value: 'name' | 'filename' }
+    setCurrentUser(profile);
+    localStorage.setItem('kinder-learn-user', JSON.stringify(profile));
   };
 
   const logout = () => {
@@ -35,10 +41,15 @@ export const UserProvider = ({ children }) => {
   const addScore = (score) => {
     if (!currentUser) return;
 
-    const newScore = { name: currentUser, score, date: new Date().toISOString() };
+    const newScore = { 
+      profile: currentUser, 
+      score, 
+      date: new Date().toISOString() 
+    };
+    
     const newScores = [...highScores, newScore]
       .sort((a, b) => b.score - a.score)
-      .slice(0, 5); // Keep top 5
+      .slice(0, 6); // Keep top 6
 
     setHighScores(newScores);
     localStorage.setItem('kinder-learn-highscores', JSON.stringify(newScores));

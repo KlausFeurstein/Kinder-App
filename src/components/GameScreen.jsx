@@ -1,50 +1,57 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { vocabulary } from '../data/vocabulary';
 import { useUser } from '../context/UserContext';
 import { getVisual } from './Visuals';
+import { useSpeech } from '../hooks/useSpeech';
 
-const GameScreen = ({ mode, category, onBack }) => {
+const GameScreen = ({ mode, category, initialTime, onBack }) => {
   const [currentItem, setCurrentItem] = useState(null);
   const [options, setOptions] = useState([]);
   const [feedback, setFeedback] = useState(null); // 'correct', 'incorrect'
   const [wrongId, setWrongId] = useState(null);
   const [score, setScore] = useState(0);
+  const [lives, setLives] = useState(3);
+  const [timeLeft, setTimeLeft] = useState(initialTime || 60);
+  const usedQuestionIdsRef = useRef([]); // Use ref instead of state to avoid re-renders/dependency loops
+  const [gameOver, setGameOver] = useState(false);
   const { addScore } = useUser();
   
   // Ref to track score for cleanup effect
   const scoreRef = useRef(0);
+  const scoreSubmittedRef = useRef(false); // Track if score has been submitted
 
   // Filter vocabulary based on category
-  const gameVocab = category === 'all' 
+  const gameVocab = React.useMemo(() => category === 'all' 
     ? vocabulary 
-    : vocabulary.filter(item => item.category === category);
+    : vocabulary.filter(item => item.category === category), [category]);
 
   useEffect(() => {
     scoreRef.current = score;
   }, [score]);
 
-  useEffect(() => {
-    startNewRound();
-    return () => {
-      // Save score when unmounting (exiting game)
-      if (mode === 'quiz' && scoreRef.current > 0) {
-        addScore(scoreRef.current);
-      }
-    };
-  }, []);
+  const { speak } = useSpeech();
 
-  const speak = (text, lang = 'en-US') => {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = lang;
-    window.speechSynthesis.speak(utterance);
-  };
+  const endGame = useCallback(() => {
+    setGameOver(true);
+    speak('Game Over');
+    if (scoreRef.current > 0 && !scoreSubmittedRef.current) {
+      addScore(scoreRef.current);
+      scoreSubmittedRef.current = true;
+    }
+  }, [addScore, speak]);
 
-  const startNewRound = () => {
-    if (gameVocab.length === 0) return;
+  const startNewRound = useCallback(() => {
+    // Filter out used questions using ref
+    const availableVocab = gameVocab.filter(item => !usedQuestionIdsRef.current.includes(item.id));
 
-    const randomItem = gameVocab[Math.floor(Math.random() * gameVocab.length)];
+    if (availableVocab.length === 0) {
+      endGame();
+      return;
+    }
+
+    const randomItem = availableVocab[Math.floor(Math.random() * availableVocab.length)];
     setCurrentItem(randomItem);
+    usedQuestionIdsRef.current.push(randomItem.id); // Update ref directly
     setFeedback(null);
     setWrongId(null);
 
@@ -64,17 +71,37 @@ const GameScreen = ({ mode, category, onBack }) => {
       
       setTimeout(() => speak(`Find the ${randomItem.english}`), 500);
     }
-  };
+  }, [gameVocab, mode, category, endGame, speak]);
 
-  const handleNext = () => {
+  useEffect(() => {
     startNewRound();
-  };
+    
+    // Timer interval
+    const timer = setInterval(() => {
+      if (!gameOver) {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            endGame();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }
+    }, 1000);
 
-  const handlePrev = () => {
-    startNewRound();
-  };
+    return () => {
+      clearInterval(timer);
+      // Save score when unmounting (exiting game)
+      if (mode === 'quiz' && scoreRef.current > 0 && !scoreSubmittedRef.current) {
+        addScore(scoreRef.current);
+        scoreSubmittedRef.current = true;
+      }
+    };
+  }, [startNewRound, gameOver, mode, addScore, endGame]); // Added missing dependencies
 
   const handleOptionClick = (item) => {
+    if (gameOver) return;
+
     if (item.id === currentItem.id) {
       setFeedback('correct');
       speak('Great job!');
@@ -84,7 +111,13 @@ const GameScreen = ({ mode, category, onBack }) => {
       setFeedback('incorrect');
       setWrongId(item.id);
       speak('Try again');
-      setScore(s => Math.max(0, s - 5));
+      setLives(prev => {
+        const newLives = prev - 1;
+        if (newLives <= 0) {
+          endGame();
+        }
+        return newLives;
+      });
       setTimeout(() => setWrongId(null), 500);
     }
   };
@@ -95,6 +128,44 @@ const GameScreen = ({ mode, category, onBack }) => {
     }
     return item.image;
   };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  if (gameOver) {
+    return (
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '2rem'
+      }}>
+        <h2 style={{ fontSize: '4rem', color: '#FF5722' }}>Game Over!</h2>
+        <div style={{ fontSize: '3rem', color: '#FFD700' }}>Score: {score}</div>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button
+            onClick={onBack}
+            style={{
+              fontSize: '2rem',
+              padding: '1rem 2rem',
+              borderRadius: '50px',
+              border: 'none',
+              backgroundColor: '#2196F3',
+              color: 'white',
+              cursor: 'pointer'
+            }}
+          >
+            Home 🏠
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentItem) return <div>Loading...</div>;
 
@@ -111,124 +182,84 @@ const GameScreen = ({ mode, category, onBack }) => {
       boxSizing: 'border-box',
       position: 'relative'
     }}>
-      {mode === 'quiz' && (
-        <div style={{ 
-          position: 'absolute', 
-          top: '10px', 
-          right: '20px', 
-          fontSize: '2rem', 
-          fontWeight: 'bold',
-          color: '#FFD700',
-          textShadow: '2px 2px 0 #000',
-          zIndex: 100
-        }}>
-          ⭐ {score}
-        </div>
-      )}
+      {/* Header: Score, Timer, Lives, Exit */}
+      <div style={{ 
+        position: 'absolute', 
+        top: '10px', 
+        left: '10px',
+        right: '10px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        zIndex: 100
+      }}>
+        <button
+          onClick={endGame}
+          style={{
+            fontSize: '1.5rem',
+            background: '#ff4444',
+            color: 'white',
+            border: 'none',
+            borderRadius: '10px',
+            padding: '0.5rem 1rem',
+            cursor: 'pointer'
+          }}
+        >
+          Exit ❌
+        </button>
 
-      {mode === 'learn' ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <button 
-              onClick={handlePrev}
-              style={{ fontSize: '3rem', background: 'none', border: 'none', cursor: 'pointer' }}
-            >
-              ⬅️
-            </button>
-            
-            <div 
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                fontSize: item.visualId ? '1rem' : '8rem', // Adjust size for SVGs
-                width: item.visualId ? '300px' : 'auto',
-                height: item.visualId ? '300px' : 'auto',
-                animation: 'bounce 1s infinite alternate'
-              }}
-            >
-              {renderImage(currentItem)}
-            </div>
-
-            <button 
-              onClick={handleNext}
-              style={{ fontSize: '3rem', background: 'none', border: 'none', cursor: 'pointer' }}
-            >
-              ➡️
-            </button>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ fontSize: '2rem' }}>
+            {Array(lives).fill('❤️').join('')}
           </div>
-
-          <div style={{ display: 'flex', gap: '2rem' }}>
-            <button
-              onClick={() => speak(currentItem.english)}
-              style={{
-                fontSize: '3rem',
-                padding: '1rem',
-                borderRadius: '20px',
-                border: 'none',
-                backgroundColor: 'white',
-                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                cursor: 'pointer'
-              }}
-            >
-              🇬🇧
-            </button>
-            <button
-              onClick={() => speak(currentItem.german, 'de-DE')}
-              style={{
-                fontSize: '3rem',
-                padding: '1rem',
-                borderRadius: '20px',
-                border: 'none',
-                backgroundColor: 'white',
-                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                cursor: 'pointer'
-              }}
-            >
-              🇩🇪
-            </button>
+          <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#333' }}>
+            ⏱️ {formatTime(timeLeft)}
           </div>
-
-        </div>
-      ) : (
-        <>
-          <h2 style={{ marginBottom: '1rem', fontSize: '2rem' }}>Find the {currentItem.english}</h2>
           <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: '1fr 1fr', 
-            gap: '1rem',
-            width: '100%',
-            maxWidth: '500px'
+            fontSize: '2rem', 
+            fontWeight: 'bold',
+            color: '#FFD700',
+            textShadow: '2px 2px 0 #000'
           }}>
-            {options.map(item => (
-              <button
-                key={item.id}
-                onClick={() => handleOptionClick(item)}
-                style={{
-                  fontSize: item.visualId ? '1rem' : '4rem',
-                  padding: '1.5rem',
-                  borderRadius: '20px',
-                  border: '2px solid #eee',
-                  backgroundColor: wrongId === item.id ? '#ffcccc' : 'white',
-                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                  transform: feedback === 'correct' && item.id === currentItem.id ? 'scale(1.1)' : 
-                             wrongId === item.id ? 'translateX(10px)' : 'scale(1)',
-                  transition: 'all 0.2s',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <div style={{ width: item.visualId ? '100px' : 'auto', height: item.visualId ? '100px' : 'auto' }}>
-                  {renderImage(item)}
-                </div>
-              </button>
-            ))}
+            ⭐ {score}
           </div>
-        </>
-      )}
+        </div>
+      </div>
+
+      <h2 style={{ marginBottom: '1rem', fontSize: '2rem', marginTop: '60px' }}>Find the {currentItem.english}</h2>
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: '1fr 1fr', 
+        gap: '1rem',
+        width: '100%',
+        maxWidth: '500px'
+      }}>
+        {options.map(item => (
+          <button
+            key={item.id}
+            onClick={() => handleOptionClick(item)}
+            style={{
+              fontSize: item.visualId ? '1rem' : '4rem',
+              padding: '1.5rem',
+              borderRadius: '20px',
+              border: '2px solid #eee',
+              backgroundColor: wrongId === item.id ? '#ffcccc' : 'white',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+              transform: feedback === 'correct' && item.id === currentItem.id ? 'scale(1.1)' : 
+                         wrongId === item.id ? 'translateX(10px)' : 'scale(1)',
+              transition: 'all 0.2s',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <div style={{ width: item.visualId ? '100px' : 'auto', height: item.visualId ? '100px' : 'auto' }}>
+              {renderImage(item)}
+            </div>
+          </button>
+        ))}
+      </div>
       
       {feedback === 'correct' && (
         <div style={{ 

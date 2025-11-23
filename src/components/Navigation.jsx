@@ -35,17 +35,7 @@ const Navigation = ({ currentMode, onNavigate }) => {
       >
         🖼️
       </button>
-      <button 
-        onClick={() => onNavigate('learn')}
-        style={{
-          fontSize: '2rem',
-          background: 'none',
-          border: 'none',
-          opacity: currentMode === 'learn' ? 1 : 0.5
-        }}
-      >
-        📚
-      </button>
+
       <button 
         onClick={() => onNavigate('quiz')}
         style={{
