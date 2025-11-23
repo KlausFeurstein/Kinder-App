@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserProvider, useUser } from './context/UserContext';
+import { SoundProvider } from './context/SoundContext';
+import { StatsProvider } from './context/StatsContext';
 import Navigation from './components/Navigation';
 import GameScreen from './components/GameScreen';
 import CategorySelect from './components/CategorySelect';
@@ -7,6 +9,7 @@ import GalleryScreen from './components/GalleryScreen';
 import ExploreScreen from './components/ExploreScreen';
 import ProfileScreen from './components/ProfileScreen';
 import GameSetup from './components/GameSetup';
+import LearnScreen from './components/LearnScreen';
 
 function AppContent() {
   const [step, setStep] = useState('home'); // 'home', 'profile', 'setup', 'category', 'game', 'gallery', 'explore'
@@ -30,6 +33,9 @@ function AppContent() {
     } else if (target === 'gallery') {
       setStep('gallery');
       setMode('gallery');
+    } else if (target === 'learn') {
+      setStep('learn');
+      setMode('learn');
     } else if (target === 'explore') {
       setStep('explore');
       setMode('explore');
@@ -89,56 +95,99 @@ function AppContent() {
             </div>
           )}
           
-          <button 
-            onClick={() => handleNavigate('quiz')}
-            style={{
-              fontSize: '1.5rem',
-              padding: '1rem 2rem',
-              backgroundColor: 'var(--accent-color)',
-              color: 'var(--text-color)',
-              border: 'none',
-              borderRadius: '50px',
-              marginBottom: '1rem',
-              width: '80%',
-              boxShadow: '0 4px 0 #e6cf62',
-              cursor: 'pointer'
-            }}
-          >
-            Play Game 🎮
-          </button>
-          <button 
-            onClick={() => handleNavigate('gallery')}
-            style={{
-              fontSize: '1.5rem',
-              padding: '1rem 2rem',
-              backgroundColor: '#FF9F43', // Orange
-              color: 'white',
-              border: 'none',
-              borderRadius: '50px',
-              width: '80%',
-              boxShadow: '0 4px 0 #e58e3c',
-              cursor: 'pointer'
-            }}
-          >
-            Gallery 🖼️
-          </button>
-          <button 
-            onClick={() => handleNavigate('explore')}
-            style={{
-              fontSize: '1.5rem',
-              padding: '1rem 2rem',
-              backgroundColor: '#9C27B0', // Purple
-              color: 'white',
-              border: 'none',
-              borderRadius: '50px',
-              width: '80%',
-              boxShadow: '0 4px 0 #7B1FA2',
-              cursor: 'pointer',
-              marginBottom: '1rem'
-            }}
-          >
-            Explore 🏠
-          </button>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '1rem',
+            width: '90%',
+            maxWidth: '600px',
+            marginBottom: '1rem'
+          }}>
+            <button 
+              onClick={() => handleNavigate('quiz')}
+              style={{
+                fontSize: '1.5rem',
+                padding: '2rem 1rem',
+                backgroundColor: 'var(--accent-color)',
+                color: 'var(--text-color)',
+                border: 'none',
+                borderRadius: '20px',
+                boxShadow: '0 4px 0 #e6cf62',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.5rem',
+                gridColumn: '1 / -1' // Play button spans full width
+              }}
+            >
+              <span style={{ fontSize: '3rem' }}>🎮</span>
+              Play Game
+            </button>
+            
+            <button 
+              onClick={() => handleNavigate('learn')}
+              style={{
+                fontSize: '1.2rem',
+                padding: '1.5rem 1rem',
+                backgroundColor: '#4CAF50', // Green
+                color: 'white',
+                border: 'none',
+                borderRadius: '20px',
+                boxShadow: '0 4px 0 #388E3C',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <span style={{ fontSize: '2.5rem' }}>🧠</span>
+              Learn
+            </button>
+
+            <button 
+              onClick={() => handleNavigate('gallery')}
+              style={{
+                fontSize: '1.2rem',
+                padding: '1.5rem 1rem',
+                backgroundColor: '#FF9F43', // Orange
+                color: 'white',
+                border: 'none',
+                borderRadius: '20px',
+                boxShadow: '0 4px 0 #e58e3c',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <span style={{ fontSize: '2.5rem' }}>🖼️</span>
+              Gallery
+            </button>
+            
+            <button 
+              onClick={() => handleNavigate('explore')}
+              style={{
+                fontSize: '1.2rem',
+                padding: '1.5rem 1rem',
+                backgroundColor: '#9C27B0', // Purple
+                color: 'white',
+                border: 'none',
+                borderRadius: '20px',
+                boxShadow: '0 4px 0 #7B1FA2',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <span style={{ fontSize: '2.5rem' }}>🏠</span>
+              Explore
+            </button>
+          </div>
 
           {/* High Scores */}
           <div style={{ 
@@ -216,6 +265,10 @@ function AppContent() {
       return <GalleryScreen />;
     }
 
+    if (step === 'learn') {
+      return <LearnScreen onBack={() => handleNavigate('home')} />;
+    }
+
     if (step === 'explore') {
       return <ExploreScreen />;
     }
@@ -247,7 +300,11 @@ function AppContent() {
 function App() {
   return (
     <UserProvider>
-      <AppContent />
+      <SoundProvider>
+        <StatsProvider>
+          <AppContent />
+        </StatsProvider>
+      </SoundProvider>
     </UserProvider>
   );
 }

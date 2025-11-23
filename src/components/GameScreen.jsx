@@ -3,6 +3,8 @@ import { vocabulary } from '../data/vocabulary';
 import { useUser } from '../context/UserContext';
 import { getVisual } from './Visuals';
 import { useSpeech } from '../hooks/useSpeech';
+import { useSound } from '../context/SoundContext';
+import { useStats } from '../context/StatsContext';
 
 const GameScreen = ({ mode, category, initialTime, onBack }) => {
   const [currentItem, setCurrentItem] = useState(null);
@@ -30,6 +32,8 @@ const GameScreen = ({ mode, category, initialTime, onBack }) => {
   }, [score]);
 
   const { speak } = useSpeech();
+  const { playSound } = useSound();
+  const { recordResult } = useStats();
 
   const endGame = useCallback(() => {
     setGameOver(true);
@@ -103,11 +107,15 @@ const GameScreen = ({ mode, category, initialTime, onBack }) => {
     if (gameOver) return;
 
     if (item.id === currentItem.id) {
+      playSound('correct');
+      recordResult(item.id, true); // Record success
       setFeedback('correct');
       speak('Great job!');
       setScore(s => s + 10);
       setTimeout(startNewRound, 1500);
     } else {
+      playSound('incorrect');
+      recordResult(item.id, false); // Record failure
       setFeedback('incorrect');
       setWrongId(item.id);
       speak('Try again');
