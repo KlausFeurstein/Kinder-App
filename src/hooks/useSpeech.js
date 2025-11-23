@@ -1,4 +1,3 @@
-```javascript
 import { useCallback, useState, useEffect } from 'react';
 
 export const useSpeech = () => {
@@ -82,4 +81,3 @@ export const useSpeech = () => {
 
   return { speak, speakDual };
 };
-```
